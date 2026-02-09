@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { InviteForm } from "@/components/teacher/invite-form";
 
 export default function TeacherStudentsPage() {
   return (
@@ -7,14 +7,7 @@ export default function TeacherStudentsPage() {
       <p className="text-muted-foreground">
         TODO: создать группу, добавить ученика по email/телефону, инвайты.
       </p>
-      <div className="flex gap-2">
-        <Link
-          href="/invite/demo-token"
-          className="inline-flex rounded-md border px-4 py-2 text-sm hover:bg-muted"
-        >
-          Создать инвайт (демо)
-        </Link>
-      </div>
+      <InviteForm />
     </div>
   );
 }
