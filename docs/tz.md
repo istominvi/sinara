@@ -387,5 +387,5 @@ MVP минимум:
 
 ## 18) Размещение файла в репозитории
 - `docs/tz.md` — это ТЗ
-- `docs/roadmap.md` — этапы
+- `docs/roadmap.md` — этапы (см. [roadmap](./roadmap.md))
 - `docs/db-schema.md` — схема БД (после фиксации)
