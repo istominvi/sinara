@@ -1,5 +1,15 @@
 create extension if not exists "pgcrypto";
 
+-- Profiles
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('teacher', 'student', 'admin')),
+  full_name text not null,
+  phone text,
+  created_at timestamptz not null default now()
+);
+
+
 -- Helpers
 create or replace function public.is_admin(user_id uuid)
 returns boolean
@@ -10,15 +20,6 @@ as $$
     select 1 from public.profiles where id = user_id and role = 'admin'
   );
 $$;
-
--- Profiles
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('teacher', 'student', 'admin')),
-  full_name text not null,
-  phone text,
-  created_at timestamptz not null default now()
-);
 
 -- Workspaces
 create table if not exists public.workspaces (
