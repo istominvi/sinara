@@ -2,9 +2,21 @@ import { NextResponse } from "next/server";
 
 import { requireRouteRole } from "@/lib/auth/route";
 
+const ALLOWED_INVITE_TYPES = [
+  "student",
+  "workspace_teacher",
+  "teacher",
+] as const;
+
+type InviteType = (typeof ALLOWED_INVITE_TYPES)[number];
+
 function generateToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(10));
   return Buffer.from(bytes).toString("base64url");
+}
+
+function isInviteType(value: string): value is InviteType {
+  return ALLOWED_INVITE_TYPES.includes(value as InviteType);
 }
 
 export async function POST(request: Request) {
@@ -23,6 +35,13 @@ export async function POST(request: Request) {
   if (!inviteType) {
     return NextResponse.json(
       { error: "inviteType is required" },
+      { status: 400 },
+    );
+  }
+
+  if (!isInviteType(inviteType)) {
+    return NextResponse.json(
+      { error: "inviteType must be student, workspace_teacher, or teacher" },
       { status: 400 },
     );
   }

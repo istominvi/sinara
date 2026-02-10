@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 
 import { getRouteUser, requireRouteRole } from "@/lib/auth/route";
 
+const ALLOWED_TARGET_TYPES = ["student", "group"] as const;
+
+function isTargetType(
+  value: string,
+): value is (typeof ALLOWED_TARGET_TYPES)[number] {
+  return ALLOWED_TARGET_TYPES.includes(value as "student" | "group");
+}
+
 function generateRoomKey() {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
   return Buffer.from(bytes).toString("base64url");
@@ -44,6 +52,13 @@ export async function POST(request: Request) {
   if (!targetType || !targetId || !startsAt) {
     return NextResponse.json(
       { error: "targetType, targetId, startsAt are required" },
+      { status: 400 },
+    );
+  }
+
+  if (!isTargetType(targetType)) {
+    return NextResponse.json(
+      { error: "targetType must be student or group" },
       { status: 400 },
     );
   }
