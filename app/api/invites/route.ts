@@ -1,30 +1,29 @@
 import { NextResponse } from "next/server";
 
-import { supabaseRoute } from "@/lib/supabase/route";
+import { requireRouteRole } from "@/lib/auth/route";
+
+const ALLOWED_INVITE_TYPES = [
+  "student",
+  "workspace_teacher",
+  "teacher",
+] as const;
+
+type InviteType = (typeof ALLOWED_INVITE_TYPES)[number];
 
 function generateToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(10));
   return Buffer.from(bytes).toString("base64url");
 }
 
+function isInviteType(value: string): value is InviteType {
+  return ALLOWED_INVITE_TYPES.includes(value as InviteType);
+}
+
 export async function POST(request: Request) {
-  const supabase = supabaseRoute() as any;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const auth = await requireRouteRole("teacher");
 
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!profile || profile.role !== "teacher") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!auth.ok) {
+    return auth.response;
   }
 
   const body = await request.json();
@@ -40,14 +39,21 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!isInviteType(inviteType)) {
+    return NextResponse.json(
+      { error: "inviteType must be student, workspace_teacher, or teacher" },
+      { status: 400 },
+    );
+  }
+
   const token = generateToken();
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("invites")
     .insert({
       token,
       invite_type: inviteType,
-      teacher_id: session.user.id,
+      teacher_id: auth.user.id,
       workspace_id: workspaceId ?? null,
       student_email: studentEmail ?? null,
       student_phone: studentPhone ?? null,

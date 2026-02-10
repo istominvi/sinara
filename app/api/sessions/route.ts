@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { supabaseRoute } from "@/lib/supabase/route";
+import { getRouteUser, requireRouteRole } from "@/lib/auth/route";
+
+const ALLOWED_TARGET_TYPES = ["student", "group"] as const;
+
+function isTargetType(
+  value: string,
+): value is (typeof ALLOWED_TARGET_TYPES)[number] {
+  return ALLOWED_TARGET_TYPES.includes(value as "student" | "group");
+}
 
 function generateRoomKey() {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
@@ -8,16 +16,13 @@ function generateRoomKey() {
 }
 
 export async function GET() {
-  const supabase = supabaseRoute() as any;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const auth = await getRouteUser();
 
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("class_sessions")
     .select(
       "id, starts_at, duration_min, meeting_room_key, target_type, target_id, status",
@@ -32,23 +37,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = supabaseRoute() as any;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const auth = await requireRouteRole("teacher");
 
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!profile || profile.role !== "teacher") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!auth.ok) {
+    return auth.response;
   }
 
   const body = await request.json();
@@ -64,12 +56,19 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!isTargetType(targetType)) {
+    return NextResponse.json(
+      { error: "targetType must be student or group" },
+      { status: 400 },
+    );
+  }
+
   const meetingRoomKey = body.meetingRoomKey ?? generateRoomKey();
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("class_sessions")
     .insert({
-      teacher_id: session.user.id,
+      teacher_id: auth.user.id,
       target_type: targetType,
       target_id: targetId,
       starts_at: startsAt,

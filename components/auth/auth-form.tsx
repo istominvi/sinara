@@ -21,6 +21,50 @@ export function AuthForm({ role }: AuthFormProps) {
   const [loading, setLoading] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
 
+  const syncProfile = React.useCallback(
+    async (userId: string, fallback: { fullName: string; phone: string }) => {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) {
+        return { error: profileError.message };
+      }
+
+      if (profile) {
+        return { role: profile.role as "teacher" | "student" | "admin" };
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const userMetadata = (user?.user_metadata ?? {}) as {
+        full_name?: string;
+        phone?: string;
+      };
+
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: userId,
+        role,
+        full_name: userMetadata.full_name ?? fallback.fullName,
+        phone:
+          role === "student"
+            ? (userMetadata.phone ?? fallback.phone) || null
+            : null,
+      });
+
+      if (insertError) {
+        return { error: insertError.message };
+      }
+
+      return { role };
+    },
+    [role, supabase],
+  );
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
@@ -42,6 +86,13 @@ export function AuthForm({ role }: AuthFormProps) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            role,
+            full_name: fullName,
+            phone: role === "student" ? phone || null : null,
+          },
+        },
       });
 
       if (error) {
@@ -50,18 +101,10 @@ export function AuthForm({ role }: AuthFormProps) {
         return;
       }
 
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: data.user.id,
-            role,
-            full_name: fullName,
-            phone: role === "student" ? phone || null : null,
-          });
-
-        if (profileError) {
-          setMessage(profileError.message);
+      if (data.user && data.session) {
+        const result = await syncProfile(data.user.id, { fullName, phone });
+        if (result.error) {
+          setMessage(result.error);
           setLoading(false);
           return;
         }
@@ -92,30 +135,29 @@ export function AuthForm({ role }: AuthFormProps) {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
+    const result = await syncProfile(userId, { fullName: "", phone: "" });
 
-    if (profileError || !profile) {
-      setMessage("Профиль не найден. Обратитесь в поддержку.");
+    if (result.error || !result.role) {
+      setMessage(result.error ?? "Профиль не найден. Обратитесь в поддержку.");
       setLoading(false);
       return;
     }
 
     setLoading(false);
-    if (profile.role === "teacher") {
+    if (result.role === "teacher") {
       router.push("/teacher");
+      router.refresh();
       return;
     }
 
-    if (profile.role === "student") {
+    if (result.role === "student") {
       router.push("/student");
+      router.refresh();
       return;
     }
 
     router.push("/admin");
+    router.refresh();
   };
 
   return (
@@ -181,7 +223,11 @@ export function AuthForm({ role }: AuthFormProps) {
           </p>
         )}
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Подождите..." : mode === "login" ? "Войти" : "Создать аккаунт"}
+          {loading
+            ? "Подождите..."
+            : mode === "login"
+              ? "Войти"
+              : "Создать аккаунт"}
         </Button>
       </form>
     </div>
