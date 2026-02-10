@@ -115,6 +115,11 @@ Workspace хранит:
 
 Реализация:
 - Supabase Storage: **private buckets**
+  - `cinara-content` (private) — весь учебный контент
+  - `branding-assets` (private) — логотипы/темы школ
+- структура путей в `cinara-content`:
+  - `methodics/<methodicId>/lessons/<lessonId>/...`
+  - `methodics/<methodicId>/words/<wordId>/audio.mp3`
 - выдача доступа через **короткоживущие signed URL** (TTL 60–180 сек) после проверки прав (server action/edge function)
 - логирование выдачи signed URL и rate-limit
 - для презентаций/медиа — встроенный viewer/плеер без прямого “скачать”
@@ -233,9 +238,10 @@ MVP минимум:
 - завершение: все слова набора помечены “угадано”
 
 ### 10.3 Личный словарь ученика
-- список всех слов курса
+- список изученных слов курса
 - статусы: new/learning/learned
 - статистика: correct/wrong, last_seen_at
+- аудио словаря выдаётся только через signed URL из `cinara-content`
 
 ---
 

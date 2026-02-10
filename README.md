@@ -33,13 +33,12 @@ supabase db reset
 ### Storage buckets
 
 Создайте приватные buckets:
-- `methodic-assets`
-- `word-audio`
+- `cinara-content`
 - `branding-assets`
 
 ### Signed URLs
 
-Приватные assets должны раздаваться через серверный endpoint с проверкой прав (см. `app/api/storage/sign/route.ts`).
+Приватные assets из `cinara-content` и `branding-assets` должны раздаваться через серверный endpoint с проверкой прав (см. `app/api/storage/sign/route.ts`).
 
 ## Скрипты
 
