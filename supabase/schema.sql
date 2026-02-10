@@ -524,7 +524,6 @@ create policy "invites_insert" on public.invites
 -- Storage buckets
 insert into storage.buckets (id, name, public)
 values
-  ('methodic-assets', 'methodic-assets', false),
-  ('word-audio', 'word-audio', false),
+  ('cinara-content', 'cinara-content', false),
   ('branding-assets', 'branding-assets', false)
 on conflict (id) do nothing;
